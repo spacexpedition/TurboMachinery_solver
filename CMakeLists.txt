@@ -10,22 +10,34 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Network Core)
 
-add_executable(Turbomachines_solver
-        main.cpp
-        #Frontend/src/main.cpp
+add_executable(Turbomachines_GUI
+        Frontend/src/main.cpp
         Frontend/src/ui/MainWindow.cpp
         Frontend/src/ui/MainWindow.h
         Frontend/src/ui/VelocityTriangleWidget.cpp
         Frontend/src/ui/VelocityTriangleWidget.h
 )
 
-target_link_libraries(Turbomachines_solver PRIVATE
+target_link_libraries(Turbomachines_GUI PRIVATE
         Qt6::Widgets
         Qt6::Network
         Qt6::Core
 )
 
-set_target_properties(Turbomachines_solver PROPERTIES
+set_target_properties(Turbomachines_GUI PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+)
+
+add_executable(Turbomachine_CLI
+        main.cpp
+)
+
+target_link_libraries(Turbomachine_CLI PRIVATE
+        Qt6::Network
+        Qt6::Core
+)
+
+set_target_properties(Turbomachine_CLI PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
 
