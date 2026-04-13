@@ -29,12 +29,28 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     QString appDir = QCoreApplication::applicationDirPath();
     QString backendPath = QDir(appDir).filePath("api_server.exe");
     
-    // In dev mode, maybe it's not there, but for release it will be
+    // In release mode, the compiled backend is packed next to the executable
     if(QFile::exists(backendPath)) {
         qDebug() << "Starting packaged backend:" << backendPath;
         backendProcess->start(backendPath);
     } else {
-        qDebug() << "api_server.exe not found at" << backendPath << ". Assuming manual/dev backend run.";
+        qDebug() << "api_server.exe not found. Attempting to start Python Dev Backend automatically...";
+        
+        // Find Backend directory relative to the CMake build output directory
+        // Assuming typical IDE build like: cmake-build-debug/bin/ or build/ReleaseBuild/bin/
+        QString devBackendDir = QDir(appDir).filePath("../../Backend");
+        if(QDir(devBackendDir).exists() && QFile::exists(QDir(devBackendDir).filePath("api_server.py"))) {
+            backendProcess->setWorkingDirectory(devBackendDir);
+            
+            // Look for virtual environment python
+            QString venvPython = QDir(appDir).filePath("../../.venv/Scripts/python.exe");
+            QString pythonCmd = QFile::exists(venvPython) ? venvPython : "python";
+            
+            backendProcess->start(pythonCmd, QStringList() << "api_server.py");
+            qDebug() << "Started Dev Backend:" << pythonCmd << "api_server.py";
+        } else {
+            qDebug() << "Could not auto-start python backend. Run start_backend_server.bat manually.";
+        }
     }
 
     // Connect signals and slots
