@@ -93,4 +93,4 @@ int main(int argc, char *argv[]) {
     return app.exec();
 }
 
-#include "QtNetworkClient.moc"
+#include "main.moc"
