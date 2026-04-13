@@ -8,6 +8,10 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if(MSVC)
+    add_compile_options(/Zc:__cplusplus)
+endif()
+
 find_package(Qt6 REQUIRED COMPONENTS Widgets Network Core)
 
 add_executable(Turbomachines_GUI
@@ -16,6 +20,7 @@ add_executable(Turbomachines_GUI
         Frontend/src/ui/MainWindow.h
         Frontend/src/ui/VelocityTriangleWidget.cpp
         Frontend/src/ui/VelocityTriangleWidget.h
+        Frontend/resources.qrc
 )
 
 target_link_libraries(Turbomachines_GUI PRIVATE

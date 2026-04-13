@@ -20,18 +20,25 @@ void VelocityTriangleWidget::updateCoordinates(const QJsonObject& coords) {
     update();
 }
 
+void VelocityTriangleWidget::setDarkMode(bool dark) {
+    if(m_isDarkMode != dark) {
+        m_isDarkMode = dark;
+        update();
+    }
+}
+
 void VelocityTriangleWidget::paintEvent(QPaintEvent *) {
     QPainter painter(this);
 
     // Enable antialiasing for smooth vector lines
     painter.setRenderHint(QPainter::Antialiasing);
 
-    // Draw a dark background for the modern CAD/engineering aesthetic
-    painter.fillRect(rect(), QColor(25, 25, 30));
+    // Draw a background based on current theme
+    painter.fillRect(rect(), m_isDarkMode ? QColor(25, 25, 30) : QColor(245, 245, 250));
 
     // If no data has been received yet, show a placeholder
     if (currentCoords.isEmpty()) {
-        painter.setPen(QColor(150, 150, 150));
+        painter.setPen(m_isDarkMode ? QColor(150, 150, 150) : QColor(100, 100, 100));
         QFont font = painter.font();
         font.setPointSize(12);
         painter.setFont(font);
@@ -64,7 +71,7 @@ void VelocityTriangleWidget::drawTriangle(QPainter& painter, const QJsonObject& 
     QPointF uPoint(xOffset + uTip[0].toDouble() * scale, baseY);
 
     // Draw Station Label
-    painter.setPen(QColor(220, 220, 220));
+    painter.setPen(m_isDarkMode ? QColor(220, 220, 220) : QColor(40, 40, 40));
     QFont font = painter.font();
     font.setBold(true);
     font.setPointSize(11);
@@ -118,6 +125,6 @@ void VelocityTriangleWidget::drawVector(QPainter& painter, QPointF start, QPoint
     // --- Label drawing logic ---
     // Place the label near the midpoint of the vector
     QPointF mid((start.x() + end.x()) / 2, (start.y() + end.y()) / 2);
-    painter.setPen(QColor(240, 240, 240)); // White text
+    painter.setPen(m_isDarkMode ? QColor(240, 240, 240) : QColor(20, 20, 20)); // Contrast text
     painter.drawText(mid.x() + 8, mid.y() - 8, label);
 }

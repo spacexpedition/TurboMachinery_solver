@@ -9,13 +9,33 @@
 #include <QJsonObject>
 #include <QUrl>
 #include <QDebug>
+#include <QIcon>
+#include <QCoreApplication>
+#include <QTimer>
+#include <QDir>
+#include <QFile>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     setWindowTitle("Intelligent Turbomachinery Solver");
+    setWindowIcon(QIcon(":/assets/logo.png"));
     setupUI();
+    applyTheme(true); // Default to Dark Mode
 
     // Initialize the network manager for async HTTP calls
     networkManager = new QNetworkAccessManager(this);
+
+    // Initialize backend process
+    backendProcess = new QProcess(this);
+    QString appDir = QCoreApplication::applicationDirPath();
+    QString backendPath = QDir(appDir).filePath("api_server.exe");
+    
+    // In dev mode, maybe it's not there, but for release it will be
+    if(QFile::exists(backendPath)) {
+        qDebug() << "Starting packaged backend:" << backendPath;
+        backendProcess->start(backendPath);
+    } else {
+        qDebug() << "api_server.exe not found at" << backendPath << ". Assuming manual/dev backend run.";
+    }
 
     // Connect signals and slots
     connect(solveButton, &QPushButton::clicked, this, &MainWindow::sendSolveRequest);
@@ -23,53 +43,101 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
 }
 
 MainWindow::~MainWindow() {
+    if (backendProcess && backendProcess->state() == QProcess::Running) {
+        backendProcess->terminate();
+        if(!backendProcess->waitForFinished(3000)) {
+            backendProcess->kill();
+        }
+    }
     // Qt's object tree handles deletion of parented widgets and networkManager
 }
 
 void MainWindow::setupUI() {
     QWidget *centralWidget = new QWidget(this);
-    QVBoxLayout *layout = new QVBoxLayout(centralWidget);
-    layout->setContentsMargins(15, 15, 15, 15);
-    layout->setSpacing(10);
+    QHBoxLayout *mainLayout = new QHBoxLayout(centralWidget);
+    mainLayout->setContentsMargins(15, 15, 15, 15);
+    mainLayout->setSpacing(15);
 
-    QLabel *titleLabel = new QLabel("<b>Enter Word Problem or Known Variables:</b>");
-    titleLabel->setStyleSheet("font-size: 14px;");
+    // --- LEFT PANE (Controls) ---
+    QWidget *leftPane = new QWidget();
+    leftPane->setMinimumWidth(350);
+    leftPane->setMaximumWidth(400);
+    leftPane->setObjectName("LeftPane");
+    QVBoxLayout *leftLayout = new QVBoxLayout(leftPane);
+    leftLayout->setContentsMargins(15, 15, 15, 15);
+    leftLayout->setSpacing(15);
 
+    // Theme Toggle
+    themeToggleBtn = new QPushButton("🔆 Toggle Light Mode");
+    connect(themeToggleBtn, &QPushButton::clicked, this, &MainWindow::toggleTheme);
+
+    QLabel *titleLabel = new QLabel("<b>Enter Natural Language Problem:</b>");
+    
     nlpInputArea = new QTextEdit();
-    nlpInputArea->setPlaceholderText("e.g. An axial turbine stage has a blade speed of 100 m/s and constant meridional velocity of 50 m/s. The absolute inlet angle is 30 degrees...");
-    nlpInputArea->setMaximumHeight(80);
-    nlpInputArea->setStyleSheet("padding: 5px; font-size: 13px;");
+    nlpInputArea->setPlaceholderText("Paste textbook problem here... e.g. An axial turbine stage has a blade speed of 100 m/s...");
+    nlpInputArea->setMinimumHeight(120);
 
     solveButton = new QPushButton("Solve Physics & Render Geometry");
-    solveButton->setStyleSheet(
-        "QPushButton {"
-        "   background-color: #0078D7; "
-        "   color: white; "
-        "   font-weight: bold; "
-        "   font-size: 14px; "
-        "   padding: 10px; "
-        "   border-radius: 4px;"
-        "}"
-        "QPushButton:hover { background-color: #005A9E; }"
-        "QPushButton:disabled { background-color: #A0A0A0; }"
-    );
-
-    // Initialize our custom vector rendering widget
-    canvasWidget = new VelocityTriangleWidget(this);
+    solveButton->setCursor(Qt::PointingHandCursor);
 
     resultsLabel = new QLabel("Results will appear here.");
     resultsLabel->setWordWrap(true);
-    resultsLabel->setStyleSheet("background-color: #F0F0F0; padding: 10px; border-radius: 4px; font-family: monospace;");
-    resultsLabel->setMinimumHeight(60);
+    resultsLabel->setMinimumHeight(150);
+    resultsLabel->setAlignment(Qt::AlignTop);
 
-    // Add widgets to layout
-    layout->addWidget(titleLabel);
-    layout->addWidget(nlpInputArea);
-    layout->addWidget(solveButton);
-    layout->addWidget(canvasWidget, 1); // The '1' gives the canvas stretch priority
-    layout->addWidget(resultsLabel);
+    leftLayout->addWidget(themeToggleBtn);
+    leftLayout->addWidget(titleLabel);
+    leftLayout->addWidget(nlpInputArea);
+    leftLayout->addWidget(solveButton);
+    leftLayout->addWidget(resultsLabel);
+    leftLayout->addStretch(1);
+
+    // --- RIGHT PANE (Canvas) ---
+    canvasWidget = new VelocityTriangleWidget(this);
+
+    // Assemble the panes
+    mainLayout->addWidget(leftPane);
+    mainLayout->addWidget(canvasWidget, 1); // Canvas takes remaining space stretch
 
     setCentralWidget(centralWidget);
+}
+
+void MainWindow::toggleTheme() {
+    m_isDarkMode = !m_isDarkMode;
+    applyTheme(m_isDarkMode);
+    themeToggleBtn->setText(m_isDarkMode ? "🔆 Toggle Light Mode" : "🌙 Toggle Dark Mode");
+}
+
+void MainWindow::applyTheme(bool dark) {
+    canvasWidget->setDarkMode(dark);
+
+    if(dark) {
+        // Dark Mode / Glassmorphic Aesthetic
+        this->setStyleSheet(
+            "QMainWindow { background-color: #121214; color: #FFFFFF; font-family: 'Segoe UI Variable', 'Inter', sans-serif; }"
+            "QLabel { color: #E0E0E0; font-size: 14px; }"
+            "QWidget#LeftPane { background-color: rgba(30, 30, 35, 0.8); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); }"
+            "QTextEdit { background-color: rgba(0, 0, 0, 0.4); color: #FFFFFF; padding: 10px; font-size: 13px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1); }"
+            "QPushButton { background-color: #0078D7; color: white; font-weight: bold; font-size: 14px; padding: 12px; border-radius: 6px; border: none; }"
+            "QPushButton:hover { background-color: #005A9E; }"
+            "QPushButton:disabled { background-color: #A0A0A0; }"
+            "QLabel#ResultsLabel { background-color: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; font-family: monospace; border: 1px solid rgba(255,255,255,0.05); }"
+        );
+        resultsLabel->setObjectName("ResultsLabel");
+    } else {
+        // Light Mode Aesthetic
+        this->setStyleSheet(
+            "QMainWindow { background-color: #F8F9FA; color: #202124; font-family: 'Segoe UI Variable', 'Inter', sans-serif; }"
+            "QLabel { color: #202124; font-size: 14px; }"
+            "QWidget#LeftPane { background-color: #FFFFFF; border-radius: 12px; border: 1px solid #E0E0E0; }"
+            "QTextEdit { background-color: #F1F3F4; color: #202124; padding: 10px; font-size: 13px; border-radius: 8px; border: 1px solid #DADCE0; }"
+            "QPushButton { background-color: #1A73E8; color: white; font-weight: bold; font-size: 14px; padding: 12px; border-radius: 6px; border: none; }"
+            "QPushButton:hover { background-color: #174EA6; }"
+            "QPushButton:disabled { background-color: #BDBDBD; }"
+            "QLabel#ResultsLabel { background-color: #F1F3F4; padding: 10px; border-radius: 6px; font-family: monospace; border: 1px solid #E0E0E0; }"
+        );
+        resultsLabel->setObjectName("ResultsLabel");
+    }
 }
 
 void MainWindow::sendSolveRequest() {

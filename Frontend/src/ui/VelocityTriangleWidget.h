@@ -21,6 +21,7 @@ public:
 
     // Slot or public method to receive new coordinates from MainWindow
     void updateCoordinates(const QJsonObject& coords);
+    void setDarkMode(bool dark);
 
 protected:
     // Override the native Qt paint event to draw our custom graphics
@@ -28,6 +29,7 @@ protected:
 
 private:
     QJsonObject currentCoords;
+    bool m_isDarkMode = true;
 
     // Helper drawing functions
     void drawTriangle(QPainter& painter, const QJsonObject& triangleData, int xOffset, const QString& label);

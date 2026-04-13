@@ -16,3 +16,4 @@ sympy>=1.12
 #Uncomment the line below when you are ready to implement the offline SpaCy pipeline in Phase 1 - Week 3
 
 spacy>=3.7.2
+pyinstaller>=6.3.0
