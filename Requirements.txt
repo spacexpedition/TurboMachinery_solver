@@ -1,0 +1,18 @@
+#Core Backend Framework
+
+fastapi>=0.104.1
+uvicorn>=0.24.0
+
+#Data Validation (API Schema)
+
+pydantic>=2.5.2
+
+#Neuro-Symbolic Math Engine
+
+sympy>=1.12
+
+#NLP/Local Fallback dependencies
+
+#Uncomment the line below when you are ready to implement the offline SpaCy pipeline in Phase 1 - Week 3
+
+spacy>=3.7.2
