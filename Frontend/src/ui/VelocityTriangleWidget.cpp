@@ -48,42 +48,101 @@ void VelocityTriangleWidget::paintEvent(QPaintEvent *) {
 
     // Split the canvas in half: Inlet on the left, Outlet on the right
     int midPoint = width() / 2;
-    drawTriangle(painter, currentCoords["inlet"].toObject(), 50, "Inlet Station (1)");
-    drawTriangle(painter, currentCoords["outlet"].toObject(), midPoint + 50, "Outlet Station (2)");
+    QRect inletBounds(0, 0, midPoint, height());
+    QRect outletBounds(midPoint, 0, width() - midPoint, height());
+
+    drawTriangle(painter, currentCoords["inlet"].toObject(), inletBounds, "Inlet Station (1)");
+    drawTriangle(painter, currentCoords["outlet"].toObject(), outletBounds, "Outlet Station (2)");
+
+    // Draw vertical separator
+    painter.setPen(QPen(m_isDarkMode ? QColor(255, 255, 255, 50) : QColor(0, 0, 0, 50), 2));
+    painter.drawLine(midPoint, 0, midPoint, height());
 }
 
-void VelocityTriangleWidget::drawTriangle(QPainter& painter, const QJsonObject& data, int xOffset, const QString& label) {
+void VelocityTriangleWidget::drawTriangle(QPainter& painter, const QJsonObject& data, const QRect& bounds, const QString& label) {
+    if(data.isEmpty()) return;
+
     // Extract tip coordinates from the JSON structure
     QJsonArray cTip = data["c_tip"].toArray();
     QJsonArray uTip = data["u_tip"].toArray();
 
-    // Visual scale factor to make coordinates fit nicely on screen.
-    // In a full production app, this would dynamically calculate based on widget width/height.
-    double scale = 2.0;
+    double cx = cTip[0].toDouble();
+    double cy = cTip[1].toDouble();
+    double ux = uTip[0].toDouble();
 
-    // Qt's Y-axis starts at 0 at the top and goes down.
-    // We invert it so Y=0 is at the bottom of the widget.
-    int baseY = height() - 80;
+    // Determine the mathematical bounding box of the triangle
+    double minX = std::min({0.0, cx, ux});
+    double maxX = std::max({0.0, cx, ux});
+    double minY = 0.0;
+    double maxY = std::max({0.0, cy});
 
-    // Map mathematical coordinates to Qt Screen Points
-    QPointF origin(xOffset, baseY);
-    QPointF cPoint(xOffset + cTip[0].toDouble() * scale, baseY - cTip[1].toDouble() * scale);
-    QPointF uPoint(xOffset + uTip[0].toDouble() * scale, baseY);
+    double mathWidth = maxX - minX;
+    double mathHeight = maxY - minY;
 
-    // Draw Station Label
+    // Fallbacks to avoid divide by zero
+    if (mathWidth < 1) mathWidth = 1;
+    if (mathHeight < 1) mathHeight = 1;
+
+    // Screen padding
+    int padding = 40;
+    int drawW = bounds.width() - 2 * padding;
+    int drawH = bounds.height() - 2 * padding;
+
+    if (drawW < 10) drawW = 10;
+    if (drawH < 10) drawH = 10;
+
+    // Scale to fit the bounds
+    double scaleX = drawW / mathWidth;
+    double scaleY = drawH / mathHeight;
+    double scale = std::min(scaleX, scaleY) * 0.9; // 0.9 multiplier to ensure it doesn't touch the very edges
+
+    // --- Draw Graph Sheet Background ---
+    painter.save();
+    painter.setClipRect(bounds);
+    QPen gridPen(m_isDarkMode ? QColor(255, 255, 255, 15) : QColor(0, 0, 0, 15), 1, Qt::SolidLine);
+    painter.setPen(gridPen);
+    
+    int gridSpacingPx = 40; // Pixels per grid square
+    
+    // Draw vertical lines
+    for (int x = bounds.left(); x < bounds.right(); x += gridSpacingPx) {
+        painter.drawLine(x, bounds.top(), x, bounds.bottom());
+    }
+    // Draw horizontal lines
+    for (int y = bounds.bottom(); y > bounds.top(); y -= gridSpacingPx) {
+        painter.drawLine(bounds.left(), y, bounds.right(), y);
+    }
+    painter.restore();
+
+    // --- Calculate Points ---
+    // Calculate the physical origin by offsetting MinX to be positive, and factoring in the bounds.left() and padding
+    int originX = bounds.left() + padding + (-minX * scale);
+    int originY = bounds.bottom() - padding; // Qt Y is inverted, so Y=0 is near bottom
+
+    QPointF origin(originX, originY);
+    QPointF cPoint(originX + cx * scale, originY - cy * scale);
+    QPointF uPoint(originX + ux * scale, originY);
+
+    // --- Draw Station Label ---
     painter.setPen(m_isDarkMode ? QColor(220, 220, 220) : QColor(40, 40, 40));
     QFont font = painter.font();
     font.setBold(true);
     font.setPointSize(11);
     painter.setFont(font);
-    painter.drawText(xOffset, 30, label);
+    painter.drawText(bounds.left() + 20, bounds.top() + 30, label);
 
-    // Reset font for vector labels
+    // --- Draw Scale Information ---
     font.setBold(false);
     font.setPointSize(9);
     painter.setFont(font);
+    
+    double unitsPerGrid = gridSpacingPx / scale;
+    QString scaleText = QString("Scale: 1 square = %1 m/s").arg(unitsPerGrid, 0, 'f', 1);
+    
+    painter.setPen(m_isDarkMode ? QColor(150, 150, 150) : QColor(100, 100, 100));
+    painter.drawText(bounds.left() + 20, bounds.bottom() - 15, scaleText);
 
-    // Draw the 3 Vectors of the Velocity Triangle
+    // --- Draw the 3 Vectors of the Velocity Triangle ---
     // C (Absolute Velocity) - Blue
     drawVector(painter, origin, cPoint, QColor(0, 150, 255), "C");
 
@@ -91,7 +150,6 @@ void VelocityTriangleWidget::drawTriangle(QPainter& painter, const QJsonObject& 
     drawVector(painter, origin, uPoint, QColor(0, 200, 100), "U");
 
     // W (Relative Velocity) - Red
-    // Note: W connects the tip of U to the tip of C
     drawVector(painter, uPoint, cPoint, QColor(255, 100, 100), "W");
 }
 

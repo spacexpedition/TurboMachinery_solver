@@ -1,0 +1,39 @@
+.venv/
+.tmp.driveupload/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Build artifacts
+build/
+dist/
+ReleaseBuild/
+cmake-build-*/
+*.exe
+*.dll
+*.so
+*.dylib
+*.log
+
+# Databases
+*.db
+*.sqlite3
+
+# IDEs
+.idea/
+.vscode/
+.vs/
+*.swp
+*.swo
+
+# Misc
+.DS_Store
+.gsd/
+.agent/

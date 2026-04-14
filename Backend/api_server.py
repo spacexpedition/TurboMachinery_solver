@@ -3,11 +3,18 @@ import re
 import json
 import urllib.request
 import urllib.error
+import sqlite3
+import datetime
+import uuid
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Header, Request
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 from typing import Dict, Optional
 import uvicorn
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 
 # Note: Assumes solver module exists in your backend directory
 from solver.equation_graph import EquationGraph
@@ -84,47 +91,116 @@ class SolverResponse(BaseModel):
     status: str
     nlp_engine_used: str
     results: Dict[str, float] = Field(default_factory=dict)
+    steps: list = Field(default_factory=list)
     coordinates: Dict = Field(default_factory=dict)
     message: Optional[str] = Field(None)
+    paywalled: bool = False
+    free_uses_left: str = "Unlimited"
 
 app = FastAPI()
+templates = Jinja2Templates(directory="templates")
 solver_engine = EquationGraph()
 coord_engine = CoordinateEngine()
+
+from services.subscription_service import SubscriptionService
+
+# =====================================================================
+# Auth & Login Endpoints
+# =====================================================================
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    client_id = os.getenv("GOOGLE_CLIENT_ID", "YOUR_GOOGLE_CLIENT_ID")
+    return templates.TemplateResponse("login.html", {"request": request, "client_id": client_id})
+
+async def verify_token(authorization: Optional[str] = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header (Bearer token required)")
+    
+    token = authorization.split(" ")[1]
+    try:
+        client_id = os.getenv("GOOGLE_CLIENT_ID", "YOUR_GOOGLE_CLIENT_ID")
+        # For strict security, audience should match the client_id. 
+        # If client_id is dummy, it will fail unless skipped. We enforce it.
+        if client_id == "YOUR_GOOGLE_CLIENT_ID":
+            # Running local or without client ID. Skip audience verification (Not safe for production)
+            idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), audience=None)
+        else:
+            idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), client_id)
+        return idinfo
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=f"Invalid Google Token: {str(e)}")
 
 # =====================================================================
 # 4. Endpoints
 # =====================================================================
 @app.post("/api/solve", response_model=SolverResponse)
-async def solve_turbomachinery(request: SolverRequest):
+async def solve_turbomachinery(request: Request, body: SolverRequest, user_info: dict = Depends(verify_token)):
     try:
         engine_used = "None"
 
-        if request.problem_text:
+        if body.problem_text:
             if check_internet_connection():
                 engine_used = "Gemini (Cloud)"
-                extracted_vars = extract_variables_gemini(request.problem_text)
+                extracted_vars = extract_variables_gemini(body.problem_text)
             else:
                 engine_used = "SpaCy (Local)"
-                extracted_vars = extract_variables_local(request.problem_text)
-            request.known_variables.update(extracted_vars)
+                extracted_vars = extract_variables_local(body.problem_text)
+            body.known_variables.update(extracted_vars)
 
-        if not request.known_variables:
+        if not body.known_variables:
             raise ValueError("No variables provided or extracted from the text.")
 
-        solved_state = solver_engine.solve(request.known_variables)
+        solved_state, steps = solver_engine.solve(body.known_variables)
         triangle_coords = coord_engine.generate(solved_state)
+        
+        # --- PREPAYWALL CHECK ---
+        email = user_info.get("email", "unknown")
+        ip_addr = request.client.host if request.client else "unknown"
+        access_status = SubscriptionService.check_and_increment_usage(email, ip_addr)
+        
+        if access_status["paywalled"]:
+            return SolverResponse(
+                status="success", nlp_engine_used=engine_used,
+                results=solved_state, steps=[], coordinates={},
+                message="You have used your 5 free solves this month! Upgrade for step-by-step solutions.",
+                paywalled=True, free_uses_left="0"
+            )
 
         return SolverResponse(
             status="success", nlp_engine_used=engine_used,
-            results=solved_state, coordinates=triangle_coords,
-            message="Equation graph resolved successfully."
+            results=solved_state, steps=steps, coordinates=triangle_coords,
+            message="Equation graph resolved successfully.",
+            paywalled=False, free_uses_left=access_status["free_uses_left"]
         )
 
     except Exception as e:
         return SolverResponse(
-            status="error", nlp_engine_used=engine_used,
-            results={}, coordinates={}, message=str(e)
+            status="error", nlp_engine_used="None",
+            results={}, steps=[], coordinates={}, message=str(e), paywalled=False, free_uses_left="Error"
         )
+
+# =====================================================================
+# Subscription Endpoints (Mock Razorpay)
+# =====================================================================
+@app.post("/api/payment/create")
+async def create_payment_order(user_info: dict = Depends(verify_token)):
+    """ Mock endpoint to create Razorpay Order ID. In production, call Razorpay Client. """
+    return {"order_id": "order_" + str(uuid.uuid4()).replace("-", ""), "amount": 49900, "currency": "INR"}
+
+class PaymentVerification(BaseModel):
+    order_id: str
+    payment_id: str
+    signature: str
+
+@app.post("/api/payment/verify")
+async def verify_payment(req: PaymentVerification, user_info: dict = Depends(verify_token)):
+    """ Mock endpoint to fulfill a successful payment. Upgrades the account in SQLite. """
+    email = user_info.get("email", "unknown")
+    if email == "unknown":
+        raise HTTPException(status_code=401, detail="Valid email required to attach pass")
+        
+    SubscriptionService.unlock_semester_pass(email)
+    return {"status": "success", "message": f"Semester Pass unlocked for {email}!"}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8080)

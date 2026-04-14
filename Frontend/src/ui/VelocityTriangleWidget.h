@@ -32,7 +32,7 @@ private:
     bool m_isDarkMode = true;
 
     // Helper drawing functions
-    void drawTriangle(QPainter& painter, const QJsonObject& triangleData, int xOffset, const QString& label);
+    void drawTriangle(QPainter& painter, const QJsonObject& triangleData, const QRect& bounds, const QString& label);
     void drawVector(QPainter& painter, QPointF start, QPointF end, QColor color, const QString& label);
 };
 

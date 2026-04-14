@@ -12,13 +12,13 @@ Dynamic Geometry Engine: Hardware-accelerated vector graphics automatically draw
 
 Fully Portable: Designed to be compiled into a standalone Windows executable that can be run from a USB drive without requiring the user to install Python, C++, or any external dependencies.
 
-🏗️ Hybrid Architecture
+🏗️ Cloud-Native Thin-Client Architecture
 
-This application utilizes a modern local microservice architecture to combine the speed of C++ with the scientific computing power of Python.
+This application utilizes a modern cloud-native architecture, offloading all heavy scientific computing to the cloud while keeping the client application lightweight and incredibly fast.
 
-The "Face" (Frontend): Built with C++ and Qt6. It handles the native Windows UI, hardware-accelerated vector graphics (QPainter), and asynchronous HTTP communication.
+The "Face" (Frontend / Desktop Client): Built with C++ and Qt6. It handles the native Windows UI, hardware-accelerated vector graphics, and secure asynchronous HTTP communication. The executable is lightweight (~20MB) and installs instantly.
 
-The "Brain" (Backend): Built with Python 3 and FastAPI. It runs as a hidden local microservice (127.0.0.1:8080) handling stateless RESTful JSON requests, symbolic math resolution, and NLP extraction.
+The "Brain" (Backend / Server): Hosted on Google Cloud Run. Built with Python 3 and FastAPI. It acts as a highly scalable microservice handling RESTful JSON requests, symbolic mathematical resolution (SymPy), and NLP feature extraction. Protected by Google OAuth 2.0.
 
 💻 Developer Setup (CLion / CMake)
 
@@ -49,7 +49,25 @@ Build the TurbomachinerySolver executable.
 
 Run the application.
 
-Note: In the final compiled release, the C++ application will automatically spawn and manage the Python backend process using QProcess.
+Note: In the compiled release, the application acts as a thin client and securely communicates with your configured Google Cloud Run instance.
+
+🖥️ System Requirements
+
+Because the heavy lifting (Python, SymPy, NLP) is offloaded to the cloud, the application can run flawlessly on virtually any modern PC.
+
+**Minimum Specifications:**
+- **OS**: Windows 10 (64-bit)
+- **Processor**: 1.0 GHz Dual-Core Processor
+- **RAM**: 2 GB
+- **Storage**: ~70 MB of free space
+- **Network**: Active broadband internet connection (REQUIRED for solving and login)
+
+**Recommended Specifications:**
+- **OS**: Windows 11 (64-bit)
+- **Processor**: 2.0+ GHz Multi-Core Processor (Intel Core i3 / AMD Ryzen 3 or better)
+- **RAM**: 4 GB
+- **Storage**: Solid State Drive (SSD)
+- **Network**: Stable, low-latency internet connection for instant cloud responses
 
 🗺️ Roadmap (Version 2.0)
 

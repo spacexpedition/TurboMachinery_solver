@@ -45,20 +45,55 @@ class EquationGraph:
         resolved = {self.symbol_map[k]: v for k, v in knowns_dict.items() if k in self.symbol_map}
         unresolved_eqs = self.equations.copy()
         progress_made = True
+        
+        steps = []
+        
+        # 1. Given Data
+        given_strs = [f"{k} = {float(v):.3f}" for k, v in knowns_dict.items() if k in self.symbol_map]
+        steps.append({
+            "type": "header",
+            "title": "GIVEN DATA:",
+            "content": ", ".join(given_strs)
+        })
 
+        # 2. To Find
+        to_find = [sym.name for sym in self.symbol_map.values() if sym.name not in knowns_dict]
+        steps.append({
+            "type": "header",
+            "title": "TO FIND:",
+            "content": ", ".join(to_find)
+        })
+
+        step_counter = 1
         while progress_made and unresolved_eqs:
             progress_made = False
             remaining_eqs = []
             for eq in unresolved_eqs:
+                # Substitute known variables
                 subbed_eq = eq.subs(resolved)
                 free_symbols = subbed_eq.free_symbols
+                
+                # If only one variable is unknown, we can solve for it
                 if len(free_symbols) == 1:
                     target_symbol = list(free_symbols)[0]
                     try:
                         solutions = sp.solve(subbed_eq, target_symbol)
                         if solutions:
-                            resolved[target_symbol] = float(abs(solutions[0]))
+                            # Take the positive absolute magnitude
+                            ans = float(abs(solutions[0]))
+                            resolved[target_symbol] = ans
                             progress_made = True
+                            
+                            # Record the derivation step
+                            steps.append({
+                                "type": "solve_step",
+                                "title": f"Step {step_counter}: Finding {target_symbol.name}",
+                                "formula": str(eq.lhs) + " == " + str(eq.rhs),
+                                "substitution": str(subbed_eq.lhs.evalf(n=4)) + " == " + str(subbed_eq.rhs.evalf(n=4)),
+                                "result_var": target_symbol.name,
+                                "result_val": round(ans, 3)
+                            })
+                            step_counter += 1
                         else:
                             remaining_eqs.append(eq)
                     except Exception:
@@ -67,4 +102,5 @@ class EquationGraph:
                     remaining_eqs.append(eq)
             unresolved_eqs = remaining_eqs
 
-        return {sym.name: round(val, 4) for sym, val in resolved.items()}
+        results = {sym.name: round(val, 3) for sym, val in resolved.items()}
+        return results, steps

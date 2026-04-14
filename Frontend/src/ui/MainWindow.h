@@ -8,11 +8,16 @@
 #include <QMainWindow>
 #include <QNetworkAccessManager>
 #include <QTextEdit>
+#include <QLineEdit>
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QProcess>
+#include <QTabWidget>
+#include <QScrollArea>
+#include <QDesktopServices>
+#include <QUrl>
 #include "VelocityTriangleWidget.h"
 
 class MainWindow : public QMainWindow {
@@ -26,17 +31,36 @@ private slots:
     void sendSolveRequest();
     void onReplyFinished(class QNetworkReply *reply);
     void toggleTheme();
+    void openLogin();
+    void purchaseSemesterPass();
+    void checkBackendHealth();
+    void onBackendProcessError(QProcess::ProcessError error);
 
 private:
-    QProcess *backendProcess;
     QNetworkAccessManager *networkManager;
+
+    // Backend Process Management
+    QProcess *backendProcess = nullptr;
+    QTimer *healthCheckTimer = nullptr;
+    bool m_backendReady = false;
+    int m_healthCheckAttempts = 0;
+    void startBackendServer();
+    void stopBackendServer();
+    QString findPythonExecutable();
+    QString findBackendDir();
 
     // UI Elements
     QTextEdit *nlpInputArea;
+    QLineEdit *tokenInput;
     QPushButton *solveButton;
+    QPushButton *loginButton;
+    QPushButton *purchaseButton;
     QPushButton *themeToggleBtn;
     QLabel *resultsLabel;
+    QLabel *freeUsesLabel;
+    QLabel *backendStatusLabel;
     VelocityTriangleWidget *canvasWidget;
+    QTabWidget *tabWidget;
 
     bool m_isDarkMode = true;
     void setupUI();

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Turbomachinery Solver</title>
+    <style>
+        body { font-family: 'Inter', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #0f172a; margin: 0; color: white;}
+        .card { background: #1e293b; padding: 2.5rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; max-width: 450px; border: 1px solid #334155;}
+        h1 { font-size: 1.8rem; margin-bottom: 0.5rem; color: #f8fafc; }
+        p { color: #cbd5e1; margin-bottom: 2rem; font-size: 0.95rem;}
+        #tokenContainer { display: none; margin-top: 1.5rem; }
+        textarea { width: 100%; height: 80px; padding: 12px; border-radius: 8px; border: 1px solid #475569; background-color: #0f172a; color: #10b981; font-family: monospace; font-size: 0.8rem; margin-bottom: 15px; resize: none; box-sizing: border-box; outline: none;}
+        button { background: #3b82f6; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.2s;}
+        button:hover { background: #2563eb; transform: scale(1.02);}
+        .g_id_signin { display: flex; justify-content: center; width: 100%; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Turbomachinery Solver</h1>
+        <p>Please securely log in with Google to obtain your application access token.</p>
+        
+        <div id="g_id_onload"
+             data-client_id="{{ client_id }}"
+             data-context="signin"
+             data-ux_mode="popup"
+             data-callback="handleCredentialResponse"
+             data-auto_prompt="false">
+        </div>
+
+        <div class="g_id_signin"
+             data-type="standard"
+             data-shape="rectangular"
+             data-theme="filled_black"
+             data-text="signin_with"
+             data-size="large"
+             data-logo_alignment="left">
+        </div>
+
+        <div id="tokenContainer">
+            <h2 style="color: #10b981; margin-bottom: 0.5rem;">Login Successful!</h2>
+            <p style="font-size: 0.9rem; margin-bottom: 1rem;">Click 'Copy' and paste this exact token into your Turbomachinery Desktop App to unlock the solver.</p>
+            <textarea id="tokenBox" readonly></textarea>
+            <button onclick="copyToken()">Copy Token</button>
+        </div>
+    </div>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+        function handleCredentialResponse(response) {
+            document.querySelector('.g_id_signin').style.display = 'none';
+            document.getElementById('tokenContainer').style.display = 'block';
+            document.getElementById('tokenBox').value = response.credential;
+        }
+
+        function copyToken() {
+            var copyText = document.getElementById("tokenBox");
+            copyText.select();
+            copyText.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(copyText.value);
+            
+            var btn = document.querySelector("#tokenContainer button");
+            btn.innerHTML = "Copied!";
+            btn.style.background = "#10b981";
+            setTimeout(() => {
+                btn.innerHTML = "Copy Token";
+                btn.style.background = "#3b82f6";
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
