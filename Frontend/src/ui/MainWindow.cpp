@@ -339,72 +339,38 @@ void MainWindow::purchaseSemesterPass() {
 // Backend Server Auto-Start Infrastructure
 // =====================================================================
 
-QString MainWindow::findPythonExecutable() {
-    // Priority 1: .venv inside the project root (development or bundled)
-    QDir appDir(QCoreApplication::applicationDirPath());
-
-    // Walk upward to find the project root containing ".venv"
-    // Handles: bin/, ReleaseBuild/bin/, build/bin/, cmake-build-debug/bin/ etc.
-    QDir searchDir = appDir;
-    for (int i = 0; i < 5; ++i) {
-        QString venvPython = searchDir.absoluteFilePath(".venv/Scripts/python.exe");
-        if (QFileInfo::exists(venvPython)) {
-            qDebug() << "[Backend] Found venv Python:" << venvPython;
-            return venvPython;
-        }
-        if (!searchDir.cdUp()) break;
-    }
-
-    // Priority 2: System Python
-    qDebug() << "[Backend] No .venv found, falling back to system 'python'";
-    return "python";
-}
-
-QString MainWindow::findBackendDir() {
-    QDir appDir(QCoreApplication::applicationDirPath());
-
-    // Walk upward to find the project root containing "Backend/"
-    QDir searchDir = appDir;
-    for (int i = 0; i < 5; ++i) {
-        QString backendPath = searchDir.absoluteFilePath("Backend");
-        if (QDir(backendPath).exists() && QFileInfo::exists(backendPath + "/api_server.py")) {
-            qDebug() << "[Backend] Found Backend directory:" << backendPath;
-            return backendPath;
-        }
-        if (!searchDir.cdUp()) break;
-    }
-
-    // Fallback: relative to exe's parent
-    qDebug() << "[Backend] Warning: Could not locate Backend/ directory via traversal.";
-    return "";
-}
-
 void MainWindow::startBackendServer() {
-    QString pythonPath = findPythonExecutable();
-    QString backendDir = findBackendDir();
+    QDir appDir(QCoreApplication::applicationDirPath());
+    QDir searchDir = appDir;
+    QString scriptPath;
+    
+    for (int i = 0; i < 5; ++i) {
+        scriptPath = searchDir.absoluteFilePath("start_backend_server.bat");
+        if (QFileInfo::exists(scriptPath)) {
+            qDebug() << "[Backend] Found startup script:" << scriptPath;
+            break;
+        }
+        if (!searchDir.cdUp()) {
+            scriptPath.clear();
+            break;
+        }
+    }
 
-    if (backendDir.isEmpty()) {
-        backendStatusLabel->setText("❌ Backend Not Found");
+    if (scriptPath.isEmpty()) {
+        backendStatusLabel->setText("❌ Backend Script Not Found");
         backendStatusLabel->setStyleSheet("color: #ef4444; font-weight: bold; padding: 8px; border-radius: 6px; background-color: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);");
-        resultsLabel->setText("<b style='color:red;'>Fatal Error:</b> Could not locate the Backend directory. "
-                              "Please ensure the 'Backend/' folder with 'api_server.py' is in the project root.");
+        resultsLabel->setText("<b style='color:red;'>Fatal Error:</b> Could not locate 'start_backend_server.bat' in the project root.");
         return;
     }
 
-    backendProcess = new QProcess(this);
-    backendProcess->setWorkingDirectory(backendDir);
-    backendProcess->setProcessChannelMode(QProcess::MergedChannels);
-
-    // Connect error handler
-    connect(backendProcess, &QProcess::errorOccurred, this, &MainWindow::onBackendProcessError);
-
-    // Log output for debugging
-    connect(backendProcess, &QProcess::readyReadStandardOutput, this, [this]() {
-        qDebug() << "[Backend stdout]" << backendProcess->readAllStandardOutput();
-    });
-
-    qDebug() << "[Backend] Launching:" << pythonPath << "api_server.py in" << backendDir;
-    backendProcess->start(pythonPath, QStringList() << "api_server.py");
+    // Launch the batch script autonomously
+    // The script handles activating the venv and spawning the uvicorn process 
+    // in its own independent window, as requested by user.
+    bool started = QProcess::startDetached("cmd.exe", QStringList() << "/c" << scriptPath);
+    
+    if (!started) {
+        qDebug() << "[Backend] Failed to start the batch script detached.";
+    }
 
     // Start polling the health endpoint every 1 second
     m_healthCheckAttempts = 0;
@@ -417,17 +383,8 @@ void MainWindow::stopBackendServer() {
     if (healthCheckTimer) {
         healthCheckTimer->stop();
     }
-
-    if (backendProcess && backendProcess->state() != QProcess::NotRunning) {
-        qDebug() << "[Backend] Terminating backend server...";
-        backendProcess->terminate();
-        if (!backendProcess->waitForFinished(3000)) {
-            qDebug() << "[Backend] Force killing backend server.";
-            backendProcess->kill();
-            backendProcess->waitForFinished(2000);
-        }
-        qDebug() << "[Backend] Backend server stopped.";
-    }
+    // Since the process is autonomous, we don't kill it here.
+    // The user manages its lifecycle via the background console window.
 }
 
 void MainWindow::checkBackendHealth() {
@@ -475,25 +432,4 @@ void MainWindow::checkBackendHealth() {
         }
     });
 }
-
-void MainWindow::onBackendProcessError(QProcess::ProcessError error) {
-    QString errorMsg;
-    switch (error) {
-        case QProcess::FailedToStart:
-            errorMsg = "Python interpreter not found or failed to launch. Ensure Python is installed and accessible.";
-            break;
-        case QProcess::Crashed:
-            errorMsg = "The backend server crashed unexpectedly.";
-            break;
-        default:
-            errorMsg = "An unknown error occurred with the backend process.";
-            break;
-    }
-
-    backendStatusLabel->setText("❌ Backend Error");
-    backendStatusLabel->setStyleSheet("color: #ef4444; font-weight: bold; padding: 8px; border-radius: 6px; background-color: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);");
-    resultsLabel->setText("<b style='color:red;'>Backend Process Error:</b> " + errorMsg);
-    qDebug() << "[Backend] Process error:" << errorMsg;
-
-    if (healthCheckTimer) healthCheckTimer->stop();
-}
+

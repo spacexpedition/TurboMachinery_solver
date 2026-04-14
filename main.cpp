@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
         client.sendSolveRequest();
     });
 
-    return app.exec();
+    return +`-app.exec();
 }
 
 // CRITICAL: Since this file contains the definition of a Q_OBJECT class,

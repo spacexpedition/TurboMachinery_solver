@@ -1,4 +1,12 @@
 import os
+import sys
+
+# Ensure the Backend directory is always on the Python path regardless of CWD.
+# This is critical when the process is launched by the C++ GUI or a batch script
+# from a different working directory (e.g. the installer's bin folder).
+_BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+if _BACKEND_DIR not in sys.path:
+    sys.path.insert(0, _BACKEND_DIR)
 import re
 import json
 import urllib.request
@@ -98,7 +106,9 @@ class SolverResponse(BaseModel):
     free_uses_left: str = "Unlimited"
 
 app = FastAPI()
-templates = Jinja2Templates(directory="templates")
+# Use an absolute path so templates are found regardless of the launch CWD.
+_TEMPLATES_DIR = os.path.join(_BACKEND_DIR, "templates")
+templates = Jinja2Templates(directory=_TEMPLATES_DIR)
 solver_engine = EquationGraph()
 coord_engine = CoordinateEngine()
 

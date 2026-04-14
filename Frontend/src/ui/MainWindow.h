@@ -14,6 +14,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QProcess>
+#include <QTimer>
 #include <QTabWidget>
 #include <QScrollArea>
 #include <QDesktopServices>
@@ -34,20 +35,16 @@ private slots:
     void openLogin();
     void purchaseSemesterPass();
     void checkBackendHealth();
-    void onBackendProcessError(QProcess::ProcessError error);
 
 private:
     QNetworkAccessManager *networkManager;
 
     // Backend Process Management
-    QProcess *backendProcess = nullptr;
     QTimer *healthCheckTimer = nullptr;
     bool m_backendReady = false;
     int m_healthCheckAttempts = 0;
     void startBackendServer();
     void stopBackendServer();
-    QString findPythonExecutable();
-    QString findBackendDir();
 
     // UI Elements
     QTextEdit *nlpInputArea;

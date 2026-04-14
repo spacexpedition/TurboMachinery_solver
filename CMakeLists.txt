@@ -38,6 +38,7 @@ add_executable(Turbomachine_CLI
 )
 
 target_link_libraries(Turbomachine_CLI PRIVATE
+        Qt6::Widgets
         Qt6::Network
         Qt6::Core
 )

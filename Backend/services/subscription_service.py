@@ -1,10 +1,16 @@
 import sqlite3
 import datetime
+import os
 
 # =====================================================================
 # Database Setup for Paywall
 # =====================================================================
-conn = sqlite3.connect("turbomachinery_users.db", check_same_thread=False)
+# Use absolute path relative to this file so the DB is found regardless
+# of which directory the server process is launched from.
+_DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "turbomachinery_users.db")
+_DB_PATH = os.path.normpath(_DB_PATH)
+
+conn = sqlite3.connect(_DB_PATH, check_same_thread=False)
 cursor = conn.cursor()
 
 # Create tables
