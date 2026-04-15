@@ -108,6 +108,8 @@ cmake --build ReleaseBuild --target Turbomachines_GUI
 # Copy backend to GUI folder for local testing
 if (-not (Test-Path ".\ReleaseBuild\bin")) { New-Item -ItemType Directory -Path ".\ReleaseBuild\bin" -Force }
 Copy-Item ".\Backend\dist\backend_server.exe" -Destination ".\ReleaseBuild\bin\backend_server.exe" -Force
+Copy-Item ".\.env.template" -Destination ".\ReleaseBuild\bin\.env.template" -Force
+Write-Host "[OK] Deployment assets copied."
 Write-Host "[OK] Backend copied to bin for testing: ReleaseBuild\bin\backend_server.exe"
 
 # Run windeployqt

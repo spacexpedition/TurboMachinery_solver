@@ -23,6 +23,7 @@ from typing import Dict, Optional
 import uvicorn
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
+from dotenv import load_dotenv, find_dotenv
 
 # Note: Assumes solver module exists in your backend directory
 from solver.equation_graph import EquationGraph
@@ -106,7 +107,18 @@ class SolverResponse(BaseModel):
     free_uses_left: str = "Unlimited"
 
 app = FastAPI()
-# Fix for PyInstaller path resolution
+# Load configuration from .env file
+# When running as a standalone exe, we look in the same directory as the executable.
+if getattr(sys, 'frozen', False):
+    # Standalone exe mode
+    _EXE_DIR = os.path.dirname(sys.executable)
+    _ENV_PATH = os.path.join(_EXE_DIR, ".env")
+    load_dotenv(_ENV_PATH)
+else:
+    # Development mode
+    load_dotenv(find_dotenv())
+
+# Update template resolution
 def get_resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
     try:
@@ -137,6 +149,9 @@ async def health_check():
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     client_id = os.getenv("GOOGLE_CLIENT_ID", "YOUR_GOOGLE_CLIENT_ID")
+    if client_id == "YOUR_GOOGLE_CLIENT_ID":
+         print("WARNING: GOOGLE_CLIENT_ID is not configured. OAuth will fail.")
+    
     return templates.TemplateResponse(
         request=request, 
         name="login.html", 
