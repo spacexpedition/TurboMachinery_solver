@@ -106,8 +106,17 @@ class SolverResponse(BaseModel):
     free_uses_left: str = "Unlimited"
 
 app = FastAPI()
-# Use an absolute path so templates are found regardless of the launch CWD.
-_TEMPLATES_DIR = os.path.join(_BACKEND_DIR, "templates")
+# Fix for PyInstaller path resolution
+def get_resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base_path, relative_path)
+
+_TEMPLATES_DIR = get_resource_path("templates")
 templates = Jinja2Templates(directory=_TEMPLATES_DIR)
 solver_engine = EquationGraph()
 coord_engine = CoordinateEngine()
@@ -128,7 +137,11 @@ async def health_check():
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     client_id = os.getenv("GOOGLE_CLIENT_ID", "YOUR_GOOGLE_CLIENT_ID")
-    return templates.TemplateResponse("login.html", {"request": request, "client_id": client_id})
+    return templates.TemplateResponse(
+        request=request, 
+        name="login.html", 
+        context={"client_id": client_id}
+    )
 
 async def verify_token(authorization: Optional[str] = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):

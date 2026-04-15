@@ -69,15 +69,23 @@ Write-Host "3. BUILD PYTHON BACKEND (PyInstaller)"
 Write-Host "=========================================="
 & $PY -m pip install pyinstaller --quiet
 
+# Kill any existing backend processes safely
+Get-Process | Where-Object { $_.ProcessName -like "*backend_server*" -or $_.ProcessName -like "*python*" } | Stop-Process -Force -ErrorAction SilentlyContinue
+
+# Define backend spec file
+$SPEC_FILE = ".\Backend\api_server.spec"
+$BACKEND_EXE = ".\Backend\dist\backend_server.exe"
+
+Write-Host "Running PyInstaller..."
 Push-Location ".\Backend"
-& $PY -m PyInstaller api_server.spec --clean --noconfirm
+& "$WorkingDir\.venv\Scripts\python.exe" -m PyInstaller "api_server.spec" --noconfirm --clean
 Pop-Location
 
-$BACKEND_EXE = ".\Backend\dist\backend_server.exe"
-if (-not (Test-Path $BACKEND_EXE)) {
-    Write-Error "PyInstaller FAILED."
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "PyInstaller FAILED with exit code $LASTEXITCODE."
     exit 1
 }
+$BACKEND_EXE = ".\Backend\dist\backend_server.exe"
 Write-Host "[OK] Backend built: $BACKEND_EXE"
 
 Write-Host "=========================================="
