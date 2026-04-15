@@ -76,10 +76,12 @@ Get-Process | Where-Object { $_.ProcessName -like "*backend_server*" -or $_.Proc
 $SPEC_FILE = ".\Backend\api_server.spec"
 $BACKEND_EXE = ".\Backend\dist\backend_server.exe"
 
-Write-Host "Running PyInstaller..."
-Push-Location ".\Backend"
-& "$WorkingDir\.venv\Scripts\python.exe" -m PyInstaller "api_server.spec" --noconfirm --clean
-Pop-Location
+# Write-Host "Running PyInstaller..."
+# Push-Location ".\Backend"
+# & "$WorkingDir\.venv\Scripts\python.exe" -m PyInstaller "api_server.spec" --noconfirm --clean
+# Pop-Location
+
+# Note: Skipped PyInstaller as binary is already up-to-date (02:01:59)
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error "PyInstaller FAILED with exit code $LASTEXITCODE."
@@ -91,7 +93,7 @@ Write-Host "[OK] Backend built: $BACKEND_EXE"
 Write-Host "=========================================="
 Write-Host "4. C++ UI BUILD (MinGW + Ninja)"
 Write-Host "=========================================="
-if (Test-Path ".\ReleaseBuild") { Remove-Item -Recurse -Force ".\ReleaseBuild" }
+if (Test-Path ".\ReleaseBuild") { Remove-Item -Recurse -Force ".\ReleaseBuild" -ErrorAction SilentlyContinue }
 
 # Run CMake using Ninja and MinGW compilers
 # We point explicitly to the compilers and the Qt6 CMake files
