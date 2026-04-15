@@ -1,6 +1,7 @@
 [Setup]
 AppName=Turbomachinery Solver
 AppVersion=1.0
+AppPublisher=TurbomachinerySolver
 DefaultDirName={autopf}\TurbomachinerySolver
 DefaultGroupName=Turbomachinery Solver
 UninstallDisplayIcon={app}\Turbomachines_GUI.exe
@@ -14,10 +15,16 @@ DisableWelcomePage=no
 DisableDirPage=yes
 DisableProgramGroupPage=yes
 DisableReadyPage=yes
+; Require Windows 10 minimum
+MinVersion=10.0
 
-; This specifies we are grabbing files from the release folder
 [Files]
+; The GUI executable and all Qt DLLs (deployed by windeployqt)
 Source: ".\ReleaseBuild\bin\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; The self-contained Python backend executable (built by PyInstaller)
+; This means the user does NOT need Python installed at all.
+Source: ".\Backend\dist\backend_server.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\Turbomachinery Solver"; Filename: "{app}\Turbomachines_GUI.exe"; IconFilename: "{app}\Turbomachines_GUI.exe"

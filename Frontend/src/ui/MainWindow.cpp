@@ -340,36 +340,45 @@ void MainWindow::purchaseSemesterPass() {
 // =====================================================================
 
 void MainWindow::startBackendServer() {
-    QDir appDir(QCoreApplication::applicationDirPath());
-    QDir searchDir = appDir;
-    QString scriptPath;
-    
-    for (int i = 0; i < 5; ++i) {
-        scriptPath = searchDir.absoluteFilePath("start_backend_server.bat");
-        if (QFileInfo::exists(scriptPath)) {
-            qDebug() << "[Backend] Found startup script:" << scriptPath;
-            break;
+    QString appDirPath = QCoreApplication::applicationDirPath();
+
+    // ── Strategy 1: Look for the PyInstaller-bundled backend_server.exe ──
+    //    This is the installed / release path. The exe sits next to the GUI exe.
+    QString bundledExe = QDir(appDirPath).absoluteFilePath("backend_server.exe");
+    if (QFileInfo::exists(bundledExe)) {
+        qDebug() << "[Backend] Launching bundled backend_server.exe:" << bundledExe;
+        bool started = QProcess::startDetached(bundledExe, QStringList());
+        if (!started) {
+            backendStatusLabel->setText("❌ Backend Launch Failed");
+            backendStatusLabel->setStyleSheet("color: #ef4444; font-weight: bold; padding: 8px; border-radius: 6px; background-color: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);");
+            resultsLabel->setText("<b style='color:red;'>Fatal Error:</b> Found backend_server.exe but could not start it.");
+            return;
         }
-        if (!searchDir.cdUp()) {
+    } else {
+        // ── Strategy 2: Dev mode – walk up directories to find the .bat script ──
+        QDir searchDir(appDirPath);
+        QString scriptPath;
+        for (int i = 0; i < 6; ++i) {
+            scriptPath = searchDir.absoluteFilePath("start_backend_server.bat");
+            if (QFileInfo::exists(scriptPath)) {
+                qDebug() << "[Backend] Dev mode – found startup script:" << scriptPath;
+                break;
+            }
             scriptPath.clear();
-            break;
+            if (!searchDir.cdUp()) break;
         }
-    }
 
-    if (scriptPath.isEmpty()) {
-        backendStatusLabel->setText("❌ Backend Script Not Found");
-        backendStatusLabel->setStyleSheet("color: #ef4444; font-weight: bold; padding: 8px; border-radius: 6px; background-color: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);");
-        resultsLabel->setText("<b style='color:red;'>Fatal Error:</b> Could not locate 'start_backend_server.bat' in the project root.");
-        return;
-    }
+        if (scriptPath.isEmpty()) {
+            backendStatusLabel->setText("❌ Backend Not Found");
+            backendStatusLabel->setStyleSheet("color: #ef4444; font-weight: bold; padding: 8px; border-radius: 6px; background-color: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);");
+            resultsLabel->setText("<b style='color:red;'>Fatal Error:</b> Could not locate 'backend_server.exe' or 'start_backend_server.bat'.");
+            return;
+        }
 
-    // Launch the batch script autonomously
-    // The script handles activating the venv and spawning the uvicorn process 
-    // in its own independent window, as requested by user.
-    bool started = QProcess::startDetached("cmd.exe", QStringList() << "/c" << scriptPath);
-    
-    if (!started) {
-        qDebug() << "[Backend] Failed to start the batch script detached.";
+        bool started = QProcess::startDetached("cmd.exe", QStringList() << "/c" << scriptPath);
+        if (!started) {
+            qDebug() << "[Backend] Failed to start batch script detached.";
+        }
     }
 
     // Start polling the health endpoint every 1 second
@@ -393,7 +402,7 @@ void MainWindow::checkBackendHealth() {
     // Use a dedicated one-shot network manager for the health check
     // to avoid conflicting with the main solve reply handler
     auto *healthMgr = new QNetworkAccessManager(this);
-    QNetworkRequest req(QUrl("http://127.0.0.1:8080/login"));
+    QNetworkRequest req(QUrl("http://127.0.0.1:8080/health"));
     req.setTransferTimeout(2000);
 
     QNetworkReply *reply = healthMgr->get(req);
@@ -417,14 +426,15 @@ void MainWindow::checkBackendHealth() {
             QTimer::singleShot(4000, this, [this]() {
                 backendStatusLabel->setVisible(false);
             });
-        } else if (!alive && m_healthCheckAttempts >= 30) {
+        } else if (!alive && m_healthCheckAttempts >= 60) {
             // Timeout after ~30 seconds
             healthCheckTimer->stop();
             backendStatusLabel->setText("❌ Backend Failed to Start");
             backendStatusLabel->setStyleSheet("color: #ef4444; font-weight: bold; padding: 8px; border-radius: 6px; background-color: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);");
-            resultsLabel->setText("<b style='color:red;'>Backend Timeout:</b> The Python server did not respond within 30 seconds. "
-                                  "Check that Python and all dependencies are installed correctly.");
-            qDebug() << "[Backend] TIMEOUT - server did not become ready.";
+            resultsLabel->setText("<b style='color:red;'>Backend Timeout:</b> The server did not respond within 60 seconds. "
+                                  "If you are running the installed app, please reinstall to get the bundled backend. "
+                                  "If developing, ensure .venv is set up and api_server.py has no import errors.");
+            qDebug() << "[Backend] TIMEOUT - server did not become ready after 60s.";
         } else if (!alive) {
             // Still loading - update the visual indicator
             QString dots = QString(".").repeated((m_healthCheckAttempts % 3) + 1);

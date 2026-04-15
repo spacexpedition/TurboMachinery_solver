@@ -115,6 +115,14 @@ coord_engine = CoordinateEngine()
 from services.subscription_service import SubscriptionService
 
 # =====================================================================
+# Health Check Endpoint
+# =====================================================================
+@app.get("/health")
+async def health_check():
+    """Simple liveness probe. Always returns 200 when the server is running."""
+    return {"status": "ok"}
+
+# =====================================================================
 # Auth & Login Endpoints
 # =====================================================================
 @app.get("/login", response_class=HTMLResponse)
