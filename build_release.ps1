@@ -76,17 +76,20 @@ Get-Process | Where-Object { $_.ProcessName -like "*backend_server*" -or $_.Proc
 $SPEC_FILE = ".\Backend\api_server.spec"
 $BACKEND_EXE = ".\Backend\dist\backend_server.exe"
 
-# Write-Host "Running PyInstaller..."
-# Push-Location ".\Backend"
-# & "$WorkingDir\.venv\Scripts\python.exe" -m PyInstaller "api_server.spec" --noconfirm --clean
-# Pop-Location
+# Clean backend build directories
+if (Test-Path ".\Backend\build") { Remove-Item -Recurse -Force ".\Backend\build" -ErrorAction SilentlyContinue }
+if (Test-Path ".\Backend\dist") { Remove-Item -Recurse -Force ".\Backend\dist" -ErrorAction SilentlyContinue }
 
-# Note: Skipped PyInstaller as binary is already up-to-date (02:01:59)
-
+Write-Host "Running PyInstaller..."
+Push-Location ".\Backend"
+& "$WorkingDir\.venv\Scripts\python.exe" -m PyInstaller "api_server.spec" --noconfirm --clean
 if ($LASTEXITCODE -ne 0) {
     Write-Error "PyInstaller FAILED with exit code $LASTEXITCODE."
+    Pop-Location
     exit 1
 }
+Pop-Location
+
 $BACKEND_EXE = ".\Backend\dist\backend_server.exe"
 Write-Host "[OK] Backend built: $BACKEND_EXE"
 
