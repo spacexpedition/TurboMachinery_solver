@@ -48,9 +48,30 @@ MainWindow::~MainWindow() {
 
 void MainWindow::setupUI() {
     QWidget *centralWidget = new QWidget(this);
-    QHBoxLayout *mainLayout = new QHBoxLayout(centralWidget);
-    mainLayout->setContentsMargins(15, 15, 15, 15);
-    mainLayout->setSpacing(15);
+    QVBoxLayout *appLayout = new QVBoxLayout(centralWidget);
+    
+    // Top Bar (Mode Selector)
+    QHBoxLayout *topBar = new QHBoxLayout();
+    QLabel *modeLabel = new QLabel("<b>Operating Mode:</b>");
+    modeSelector = new QComboBox();
+    modeSelector->addItem("Solver Mode (Classic)");
+    modeSelector->addItem("Educational Mentor Mode");
+    modeSelector->addItem("Professor Dashboard");
+    connect(modeSelector, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::switchMode);
+    
+    topBar->addWidget(modeLabel);
+    topBar->addWidget(modeSelector);
+    topBar->addStretch(1);
+    appLayout->addLayout(topBar);
+
+    mainStack = new QStackedWidget();
+    appLayout->addWidget(mainStack);
+
+    // --- SOLVER MODE WIDGET (Index 0) ---
+    QWidget *solverWidget = new QWidget();
+    QHBoxLayout *solverLayout = new QHBoxLayout(solverWidget);
+    solverLayout->setContentsMargins(15, 15, 15, 15);
+    solverLayout->setSpacing(15);
 
     // --- LEFT PANE (Controls) ---
     QWidget *leftPane = new QWidget();
@@ -136,11 +157,38 @@ void MainWindow::setupUI() {
     
     tabWidget->addTab(scrollArea, "Step-by-Step Solution");
 
-    // Assemble the panes
-    mainLayout->addWidget(leftPane);
-    mainLayout->addWidget(tabWidget, 1); // Tab area takes remaining space stretch
+    // Assemble the panes for Solver Mode
+    solverLayout->addWidget(leftPane);
+    solverLayout->addWidget(tabWidget, 1); // Tab area takes remaining space stretch
+    mainStack->addWidget(solverWidget);
+
+    // --- MENTOR MODE WIDGET (Index 1) ---
+    QWidget *mentorWidget = new QWidget();
+    QHBoxLayout *mentorLayout = new QHBoxLayout(mentorWidget);
+    mentorLayout->setContentsMargins(15, 15, 15, 15);
+    mentorLayout->setSpacing(15);
+    
+    chatWidget = new ChatMentorWidget();
+    chatWidget->setMinimumWidth(350);
+    chatWidget->setMaximumWidth(400);
+    
+    profile3DWidget = new ProfileExplorer3DWidget();
+    
+    mentorLayout->addWidget(chatWidget);
+    mentorLayout->addWidget(profile3DWidget, 1);
+    mainStack->addWidget(mentorWidget);
+
+    // --- PROFESSOR DASHBOARD (Index 2) ---
+    professorDashboard = new ProfessorDashboard();
+    mainStack->addWidget(professorDashboard);
 
     setCentralWidget(centralWidget);
+
+    connect(chatWidget, &ChatMentorWidget::sendMessage, this, &MainWindow::sendMentorMessage);
+}
+
+void MainWindow::switchMode(int index) {
+    mainStack->setCurrentIndex(index);
 }
 
 void MainWindow::toggleTheme() {
@@ -324,6 +372,49 @@ void MainWindow::onReplyFinished(QNetworkReply *reply) {
     } else {
         // Handle mathematical errors (e.g., impossible geometry or missing variables)
         resultsLabel->setText("<b style='color:red;'>Backend Error:</b> " + jsonObj["message"].toString());
+    }
+
+    reply->deleteLater();
+}
+
+void MainWindow::sendMentorMessage(const QString &msg) {
+    if (!m_backendReady) {
+        chatWidget->addMessage("System", "<b style='color:red;'>Server Not Ready.</b>", true);
+        return;
+    }
+    
+    QUrl url("http://127.0.0.1:8080/api/mentor/chat");
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    
+    QString bearerStr = "Bearer " + tokenInput->text().trimmed();
+    request.setRawHeader("Authorization", bearerStr.toUtf8());
+
+    QJsonObject payload;
+    payload["message"] = msg;
+    QJsonDocument doc(payload);
+    
+    QNetworkReply *reply = networkManager->post(request, doc.toJson());
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        onMentorReplyFinished(reply);
+    });
+}
+
+void MainWindow::onMentorReplyFinished(QNetworkReply *reply) {
+    if (reply->error() != QNetworkReply::NoError) {
+        chatWidget->addMessage("System", "<b style='color:red;'>Connection Error.</b>", true);
+        reply->deleteLater();
+        return;
+    }
+
+    QByteArray responseData = reply->readAll();
+    QJsonDocument doc = QJsonDocument::fromJson(responseData);
+    QJsonObject jsonObj = doc.object();
+
+    if (jsonObj["status"].toString() == "success") {
+        chatWidget->addMessage("Mentor", jsonObj["reply"].toString(), true);
+    } else {
+        chatWidget->addMessage("System", "<b style='color:red;'>Mentor Error:</b> " + jsonObj["reply"].toString(), true);
     }
 
     reply->deleteLater();

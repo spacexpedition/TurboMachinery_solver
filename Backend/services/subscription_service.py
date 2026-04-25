@@ -19,9 +19,18 @@ cursor.execute('''
         email TEXT PRIMARY KEY,
         has_active_pass BOOLEAN DEFAULT 0,
         free_uses INTEGER DEFAULT 0,
-        last_renewal_month INTEGER
+        last_renewal_month INTEGER,
+        role TEXT DEFAULT 'student'
     )
 ''')
+
+# Migrate existing db to add role column if it doesn't exist
+try:
+    cursor.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'student'")
+    conn.commit()
+except sqlite3.OperationalError:
+    pass # Column already exists
+
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS ips (
         ip_address TEXT PRIMARY KEY,
@@ -38,13 +47,13 @@ class SubscriptionService:
         current_month = datetime.datetime.now().month
         
         # 1. Grab User Record
-        cursor.execute("SELECT has_active_pass, free_uses, last_renewal_month FROM users WHERE email=?", (email,))
+        cursor.execute("SELECT has_active_pass, free_uses, last_renewal_month, role FROM users WHERE email=?", (email,))
         user = cursor.fetchone()
         if not user:
-            cursor.execute("INSERT INTO users (email, has_active_pass, free_uses, last_renewal_month) VALUES (?, 0, 0, ?)", (email, current_month))
-            user = (0, 0, current_month)
+            cursor.execute("INSERT INTO users (email, has_active_pass, free_uses, last_renewal_month, role) VALUES (?, 0, 0, ?, 'student')", (email, current_month))
+            user = (0, 0, current_month, 'student')
         
-        has_active_pass, u_uses, u_month = user
+        has_active_pass, u_uses, u_month, role = user
         
         if u_month != current_month:
             u_uses = 0
@@ -83,4 +92,17 @@ class SubscriptionService:
     @staticmethod
     def unlock_semester_pass(email: str):
         cursor.execute("UPDATE users SET has_active_pass=1 WHERE email=?", (email,))
+        conn.commit()
+
+    @staticmethod
+    def get_user_role(email: str) -> str:
+        cursor.execute("SELECT role FROM users WHERE email=?", (email,))
+        row = cursor.fetchone()
+        if row:
+            return row[0]
+        return "student"
+
+    @staticmethod
+    def set_user_role(email: str, role: str):
+        cursor.execute("UPDATE users SET role=? WHERE email=?", (role, email))
         conn.commit()

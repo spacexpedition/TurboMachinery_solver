@@ -12,7 +12,7 @@ if(MSVC)
     add_compile_options(/Zc:__cplusplus)
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Network Core)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Network Core 3DCore 3DRender 3DExtras)
 
 add_executable(Turbomachines_GUI
         Frontend/src/main.cpp
@@ -20,6 +20,12 @@ add_executable(Turbomachines_GUI
         Frontend/src/ui/MainWindow.h
         Frontend/src/ui/VelocityTriangleWidget.cpp
         Frontend/src/ui/VelocityTriangleWidget.h
+        Frontend/src/ui/ChatMentorWidget.cpp
+        Frontend/src/ui/ChatMentorWidget.h
+        Frontend/src/ui/ProfileExplorer3DWidget.cpp
+        Frontend/src/ui/ProfileExplorer3DWidget.h
+        Frontend/src/ui/ProfessorDashboard.cpp
+        Frontend/src/ui/ProfessorDashboard.h
         Frontend/resources.qrc
 )
 
@@ -27,6 +33,9 @@ target_link_libraries(Turbomachines_GUI PRIVATE
         Qt6::Widgets
         Qt6::Network
         Qt6::Core
+        Qt6::3DCore
+        Qt6::3DRender
+        Qt6::3DExtras
 )
 
 set_target_properties(Turbomachines_GUI PROPERTIES

@@ -19,8 +19,12 @@
 #include <QScrollArea>
 #include <QDesktopServices>
 #include <QUrl>
+#include <QStackedWidget>
+#include <QComboBox>
 #include "VelocityTriangleWidget.h"
-
+#include "ChatMentorWidget.h"
+#include "ProfileExplorer3DWidget.h"
+#include "ProfessorDashboard.h"
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
@@ -31,10 +35,13 @@ public:
 private slots:
     void sendSolveRequest();
     void onReplyFinished(class QNetworkReply *reply);
+    void sendMentorMessage(const QString &msg);
+    void onMentorReplyFinished(class QNetworkReply *reply);
     void toggleTheme();
     void openLogin();
     void purchaseSemesterPass();
     void checkBackendHealth();
+    void switchMode(int index);
 
 private:
     QNetworkAccessManager *networkManager;
@@ -58,6 +65,13 @@ private:
     QLabel *backendStatusLabel;
     VelocityTriangleWidget *canvasWidget;
     QTabWidget *tabWidget;
+
+    // Mentor Mode Elements
+    QStackedWidget *mainStack;
+    QComboBox *modeSelector;
+    ChatMentorWidget *chatWidget;
+    ProfileExplorer3DWidget *profile3DWidget;
+    ProfessorDashboard *professorDashboard;
 
     bool m_isDarkMode = true;
     void setupUI();

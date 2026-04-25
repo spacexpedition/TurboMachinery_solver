@@ -106,6 +106,13 @@ class SolverResponse(BaseModel):
     paywalled: bool = False
     free_uses_left: str = "Unlimited"
 
+class ChatRequest(BaseModel):
+    message: str
+
+class ChatResponse(BaseModel):
+    status: str
+    reply: str
+
 app = FastAPI()
 # Load configuration from .env file
 # When running as a standalone exe, we look in the same directory as the executable.
@@ -134,6 +141,7 @@ solver_engine = EquationGraph()
 coord_engine = CoordinateEngine()
 
 from services.subscription_service import SubscriptionService
+from services.mentor_service import MentorService
 
 # =====================================================================
 # Health Check Endpoint
@@ -247,6 +255,47 @@ async def verify_payment(req: PaymentVerification, user_info: dict = Depends(ver
         
     SubscriptionService.unlock_semester_pass(email)
     return {"status": "success", "message": f"Semester Pass unlocked for {email}!"}
+
+# =====================================================================
+# Professor & Mentor Endpoints
+# =====================================================================
+@app.get("/api/professor/dashboard")
+async def get_professor_dashboard(user_info: dict = Depends(verify_token)):
+    email = user_info.get("email", "unknown")
+    if email == "unknown":
+        raise HTTPException(status_code=401, detail="Valid email required")
+        
+    role = SubscriptionService.get_user_role(email)
+    if role != "professor":
+        raise HTTPException(status_code=403, detail="Access forbidden: Professor role required")
+        
+    # Mock data for now
+    return {
+        "status": "success",
+        "data": {
+            "total_students": 42,
+            "active_sessions": 12,
+            "recent_topics": ["Axial Compressors", "Euler Equation", "Velocity Triangles"]
+        }
+    }
+
+@app.post("/api/mentor/chat", response_model=ChatResponse)
+async def chat_with_mentor(body: ChatRequest, user_info: dict = Depends(verify_token)):
+    email = user_info.get("email", "unknown")
+    if email == "unknown":
+        raise HTTPException(status_code=401, detail="Valid email required")
+        
+    try:
+        reply = MentorService.send_message(email, body.message)
+        return ChatResponse(status="success", reply=reply)
+    except Exception as e:
+        return ChatResponse(status="error", reply=f"Mentor error: {str(e)}")
+
+@app.delete("/api/mentor/chat")
+async def clear_mentor_session(user_info: dict = Depends(verify_token)):
+    email = user_info.get("email", "unknown")
+    MentorService.clear_session(email)
+    return {"status": "success", "message": "Session cleared"}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8080)
