@@ -4,6 +4,7 @@
 #include <Qt3DCore/QTransform>
 #include <Qt3DRender/QCamera>
 #include <Qt3DExtras/QOrbitCameraController>
+#include <Qt3DExtras/QForwardRenderer>
 #include <QColor>
 
 ProfileExplorer3DWidget::ProfileExplorer3DWidget(QWidget *parent) : QWidget(parent) {

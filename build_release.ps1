@@ -11,7 +11,7 @@ Write-Host "1. PRE-REQUISITE PATH DEFINITIONS"
 Write-Host "=========================================="
 
 # Define Qt and MinGW paths
-$QT_ROOT = "D:\Qt\6.10.2\mingw_64"
+$QT_ROOT = "D:\Qt\6.10.3\mingw_64"
 $MINGW_BIN = "D:\Qt\Tools\mingw1310_64\bin"
 $NINJA_EXE = "D:\Qt\Tools\Ninja\ninja.exe"
 
@@ -113,7 +113,8 @@ cmake --build ReleaseBuild --target Turbomachines_GUI
 # Copy backend to GUI folder for local testing
 if (-not (Test-Path ".\ReleaseBuild\bin")) { New-Item -ItemType Directory -Path ".\ReleaseBuild\bin" -Force }
 Copy-Item ".\Backend\dist\backend_server.exe" -Destination ".\ReleaseBuild\bin\backend_server.exe" -Force
-Copy-Item ".\.env.template" -Destination ".\ReleaseBuild\bin\.env.template" -Force
+if (Test-Path ".\.env.template") { Copy-Item ".\.env.template" -Destination ".\ReleaseBuild\bin\.env.template" -Force }
+elseif (Test-Path ".\.env") { Copy-Item ".\.env" -Destination ".\ReleaseBuild\bin\.env" -Force }
 Write-Host "[OK] Deployment assets copied."
 Write-Host "[OK] Backend copied to bin for testing: ReleaseBuild\bin\backend_server.exe"
 
