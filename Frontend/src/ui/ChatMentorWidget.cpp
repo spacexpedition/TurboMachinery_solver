@@ -1,5 +1,6 @@
 #include "ChatMentorWidget.h"
 #include <QScrollBar>
+#include <QTimer>
 
 ChatMentorWidget::ChatMentorWidget(QWidget *parent) : QWidget(parent) {
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
