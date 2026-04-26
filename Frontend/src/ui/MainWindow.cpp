@@ -48,24 +48,19 @@ MainWindow::~MainWindow() {
 
 void MainWindow::setupUI() {
     QWidget *centralWidget = new QWidget(this);
-    QVBoxLayout *appLayout = new QVBoxLayout(centralWidget);
+    QHBoxLayout *appLayout = new QHBoxLayout(centralWidget);
+    appLayout->setContentsMargins(0, 0, 0, 0); // Sidebar handles its own margins
+    appLayout->setSpacing(0);
     
-    // Top Bar (Mode Selector)
-    QHBoxLayout *topBar = new QHBoxLayout();
-    QLabel *modeLabel = new QLabel("<b>Operating Mode:</b>");
-    modeSelector = new QComboBox();
-    modeSelector->addItem("Solver Mode (Classic)");
-    modeSelector->addItem("Educational Mentor Mode");
-    modeSelector->addItem("Professor Dashboard");
-    connect(modeSelector, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::switchMode);
-    
-    topBar->addWidget(modeLabel);
-    topBar->addWidget(modeSelector);
-    topBar->addStretch(1);
-    appLayout->addLayout(topBar);
+    // Left Pane: Sidebar
+    sidebarWidget = new SidebarWidget(this);
+    connect(sidebarWidget, &SidebarWidget::modeSelected, this, &MainWindow::switchMode);
+    connect(sidebarWidget, &SidebarWidget::themeToggled, this, &MainWindow::toggleTheme);
+    appLayout->addWidget(sidebarWidget);
 
+    // Right Pane: Main Stack
     mainStack = new QStackedWidget();
-    appLayout->addWidget(mainStack);
+    appLayout->addWidget(mainStack, 1); // Stretch to fill remaining space
 
     // --- SOLVER MODE WIDGET (Index 0) ---
     QWidget *solverWidget = new QWidget();
@@ -82,9 +77,7 @@ void MainWindow::setupUI() {
     leftLayout->setContentsMargins(15, 15, 15, 15);
     leftLayout->setSpacing(15);
 
-    // Theme Toggle
-    themeToggleBtn = new QPushButton(m_isDarkMode ? "🔆 Toggle Light Mode" : "🌙 Toggle Dark Mode");
-    connect(themeToggleBtn, &QPushButton::clicked, this, &MainWindow::toggleTheme);
+    // Theme Toggle removed from here (now in sidebar)
     
     purchaseButton = new QPushButton("🛒 Purchase Semester Pass (₹499)");
     purchaseButton->setCursor(Qt::PointingHandCursor);
@@ -121,7 +114,6 @@ void MainWindow::setupUI() {
     backendStatusLabel->setAlignment(Qt::AlignCenter);
 
     leftLayout->addWidget(backendStatusLabel);
-    leftLayout->addWidget(themeToggleBtn);
     leftLayout->addWidget(purchaseButton);
     leftLayout->addWidget(loginLabel);
     leftLayout->addLayout(loginLayout);
@@ -194,7 +186,7 @@ void MainWindow::switchMode(int index) {
 void MainWindow::toggleTheme() {
     m_isDarkMode = !m_isDarkMode;
     applyTheme(m_isDarkMode);
-    themeToggleBtn->setText(m_isDarkMode ? "🔆 Toggle Light Mode" : "🌙 Toggle Dark Mode");
+    sidebarWidget->setDarkMode(m_isDarkMode);
 }
 
 void MainWindow::applyTheme(bool dark) {

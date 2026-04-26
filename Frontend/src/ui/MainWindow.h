@@ -19,12 +19,16 @@
 #include <QScrollArea>
 #include <QDesktopServices>
 #include <QUrl>
+#include <QTabWidget>
+#include <QScrollArea>
 #include <QStackedWidget>
 #include <QComboBox>
 #include "VelocityTriangleWidget.h"
 #include "ChatMentorWidget.h"
 #include "ProfileExplorer3DWidget.h"
 #include "ProfessorDashboard.h"
+#include "SidebarWidget.h"
+
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
@@ -67,6 +71,7 @@ private:
     QTabWidget *tabWidget;
 
     // Mentor Mode Elements
+    SidebarWidget *sidebarWidget;
     QStackedWidget *mainStack;
     QComboBox *modeSelector;
     ChatMentorWidget *chatWidget;
