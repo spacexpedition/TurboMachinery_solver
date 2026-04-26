@@ -28,6 +28,7 @@
 #include "ProfileExplorer3DWidget.h"
 #include "ProfessorDashboard.h"
 #include "SidebarWidget.h"
+#include "VisualEffectsOverlay.h"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -72,6 +73,7 @@ private:
 
     // Mentor Mode Elements
     SidebarWidget *sidebarWidget;
+    VisualEffectsOverlay *backgroundOverlay;
     QStackedWidget *mainStack;
     QComboBox *modeSelector;
     ChatMentorWidget *chatWidget;

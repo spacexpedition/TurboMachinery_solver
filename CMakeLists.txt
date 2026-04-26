@@ -28,6 +28,8 @@ add_executable(Turbomachines_GUI
         Frontend/src/ui/ProfessorDashboard.h
         Frontend/src/ui/SidebarWidget.cpp
         Frontend/src/ui/SidebarWidget.h
+        Frontend/src/ui/VisualEffectsOverlay.cpp
+        Frontend/src/ui/VisualEffectsOverlay.h
         Frontend/resources.qrc
 )
 

@@ -48,7 +48,24 @@ MainWindow::~MainWindow() {
 
 void MainWindow::setupUI() {
     QWidget *centralWidget = new QWidget(this);
-    QHBoxLayout *appLayout = new QHBoxLayout(centralWidget);
+    setCentralWidget(centralWidget);
+    
+    // Create base layout that allows overlaying
+    // A simple trick in Qt without absolute positioning is a single-cell QGridLayout
+    QGridLayout *baseLayout = new QGridLayout(centralWidget);
+    baseLayout->setContentsMargins(0, 0, 0, 0);
+
+    // 1. Background Overlay (Bottom Layer)
+    backgroundOverlay = new VisualEffectsOverlay(centralWidget);
+    baseLayout->addWidget(backgroundOverlay, 0, 0);
+
+    // 2. Main Content Container (Top Layer)
+    QWidget *contentContainer = new QWidget(centralWidget);
+    // Crucial: Make container background transparent so overlay shows through
+    contentContainer->setStyleSheet("background: transparent;"); 
+    baseLayout->addWidget(contentContainer, 0, 0);
+
+    QHBoxLayout *appLayout = new QHBoxLayout(contentContainer);
     appLayout->setContentsMargins(0, 0, 0, 0); // Sidebar handles its own margins
     appLayout->setSpacing(0);
     
@@ -123,8 +140,15 @@ void MainWindow::setupUI() {
     leftLayout->addWidget(freeUsesLabel);
     leftLayout->addStretch(1);
 
-    // --- RIGHT PANE (Tabs) ---
-    tabWidget = new QTabWidget(this);
+    // --- RIGHT PANE (Tabs/3D) ---
+    // We wrap the right pane in a container to give it a glassy border and spacing
+    QWidget *rightPaneContainer = new QWidget();
+    rightPaneContainer->setStyleSheet("QWidget { background-color: rgba(30, 30, 35, 0.4); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); }");
+    QVBoxLayout *rightContainerLayout = new QVBoxLayout(rightPaneContainer);
+    rightContainerLayout->setContentsMargins(5, 5, 5, 5);
+
+    tabWidget = new QTabWidget(rightPaneContainer);
+    tabWidget->setStyleSheet("background: transparent; border: none;");
     
     // Tab 1: Velocity Canvas
     canvasWidget = new VelocityTriangleWidget(this);
@@ -149,10 +173,12 @@ void MainWindow::setupUI() {
     
     tabWidget->addTab(scrollArea, "Step-by-Step Solution");
 
+    rightContainerLayout->addWidget(tabWidget);
+    
     // Assemble the panes for Solver Mode
     solverLayout->addWidget(leftPane);
-    solverLayout->addWidget(tabWidget, 1); // Tab area takes remaining space stretch
-    mainStack->addWidget(solverWidget);
+    solverLayout->addWidget(rightPaneContainer, 1); // Container takes remaining space
+    // Do not add to mainStack yet
 
     // --- MENTOR MODE WIDGET (Index 1) ---
     QWidget *mentorWidget = new QWidget();
@@ -164,17 +190,25 @@ void MainWindow::setupUI() {
     chatWidget->setMinimumWidth(350);
     chatWidget->setMaximumWidth(400);
     
-    profile3DWidget = new ProfileExplorer3DWidget();
+    QWidget *mentorRightPaneContainer = new QWidget();
+    mentorRightPaneContainer->setStyleSheet("QWidget { background-color: rgba(30, 30, 35, 0.4); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); }");
+    QVBoxLayout *mentorRightLayout = new QVBoxLayout(mentorRightPaneContainer);
+    mentorRightLayout->setContentsMargins(5, 5, 5, 5);
+    
+    profile3DWidget = new ProfileExplorer3DWidget(mentorRightPaneContainer);
+    mentorRightLayout->addWidget(profile3DWidget);
     
     mentorLayout->addWidget(chatWidget);
-    mentorLayout->addWidget(profile3DWidget, 1);
+    mentorLayout->addWidget(mentorRightPaneContainer, 1);
+    
+    // Add to stack in the correct order to match SidebarWidget indices
+    // 0: Mentor, 1: Solver, 2: Dashboard
     mainStack->addWidget(mentorWidget);
+    mainStack->addWidget(solverWidget);
 
     // --- PROFESSOR DASHBOARD (Index 2) ---
     professorDashboard = new ProfessorDashboard();
     mainStack->addWidget(professorDashboard);
-
-    setCentralWidget(centralWidget);
 
     connect(chatWidget, &ChatMentorWidget::sendMessage, this, &MainWindow::sendMentorMessage);
 }
@@ -187,6 +221,7 @@ void MainWindow::toggleTheme() {
     m_isDarkMode = !m_isDarkMode;
     applyTheme(m_isDarkMode);
     sidebarWidget->setDarkMode(m_isDarkMode);
+    backgroundOverlay->setDarkMode(m_isDarkMode);
 }
 
 void MainWindow::applyTheme(bool dark) {
@@ -195,37 +230,37 @@ void MainWindow::applyTheme(bool dark) {
     if(dark) {
         // Dark Mode / Glassmorphic Aesthetic
         this->setStyleSheet(
-            "QMainWindow { background-color: #121214; color: #FFFFFF; font-family: 'Segoe UI Variable', 'Inter', sans-serif; }"
+            "QMainWindow { background-color: transparent; color: #FFFFFF; font-family: 'Segoe UI Variable', 'Inter', sans-serif; }"
             "QLabel { color: #E0E0E0; font-size: 14px; }"
-            "QWidget#LeftPane { background-color: rgba(30, 30, 35, 0.8); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); }"
-            "QTextEdit, QLineEdit { background-color: rgba(0, 0, 0, 0.4); color: #FFFFFF; padding: 10px; font-size: 13px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1); }"
-            "QPushButton { background-color: #0078D7; color: white; font-weight: bold; font-size: 14px; padding: 12px; border-radius: 6px; border: none; }"
-            "QPushButton:hover { background-color: #005A9E; }"
-            "QPushButton:disabled { background-color: #A0A0A0; }"
-            "QTabWidget::pane { border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; background-color: rgba(30, 30, 35, 0.8); top: -1px; }"
-            "QTabBar::tab { background: rgba(0, 0, 0, 0.3); color: #A0A0A0; padding: 10px 20px; border-top-left-radius: 8px; border-top-right-radius: 8px; border: 1px solid transparent; }"
-            "QTabBar::tab:selected { background: rgba(30, 30, 35, 0.8); color: #FFFFFF; border: 1px solid rgba(255, 255, 255, 0.1); border-bottom-color: rgba(30, 30, 35, 0.8); }"
-            "QTabBar::tab:hover:!selected { background: rgba(0, 0, 0, 0.5); }"
+            "QWidget#LeftPane { background-color: rgba(30, 30, 35, 0.4); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); }"
+            "QTextEdit, QLineEdit { background-color: rgba(0, 0, 0, 0.3); color: #FFFFFF; padding: 10px; font-size: 13px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1); }"
+            "QPushButton { background-color: rgba(0, 120, 215, 0.8); color: white; font-weight: bold; font-size: 14px; padding: 12px; border-radius: 6px; border: none; }"
+            "QPushButton:hover { background-color: rgba(0, 90, 158, 0.9); }"
+            "QPushButton:disabled { background-color: rgba(160, 160, 160, 0.5); }"
+            "QTabWidget::pane { border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; background-color: rgba(30, 30, 35, 0.4); top: -1px; }"
+            "QTabBar::tab { background: rgba(0, 0, 0, 0.2); color: #A0A0A0; padding: 10px 20px; border-top-left-radius: 8px; border-top-right-radius: 8px; border: 1px solid transparent; }"
+            "QTabBar::tab:selected { background: rgba(30, 30, 35, 0.6); color: #FFFFFF; border: 1px solid rgba(255, 255, 255, 0.1); border-bottom-color: transparent; }"
+            "QTabBar::tab:hover:!selected { background: rgba(0, 0, 0, 0.4); }"
             "QScrollArea { background-color: transparent; border: none; }"
             "QScrollArea > QWidget > QWidget { background-color: transparent; }"
             "QLabel#ResultsLabel { background-color: transparent; padding: 10px; font-size: 14px; }"
         );
         resultsLabel->setObjectName("ResultsLabel");
-        loginButton->setStyleSheet("background-color: #10b981; color: white;");
+        loginButton->setStyleSheet("background-color: rgba(16, 185, 129, 0.8); color: white;");
     } else {
         // Light Mode Aesthetic
         this->setStyleSheet(
-            "QMainWindow { background-color: #F8F9FA; color: #202124; font-family: 'Segoe UI Variable', 'Inter', sans-serif; }"
+            "QMainWindow { background-color: transparent; color: #202124; font-family: 'Segoe UI Variable', 'Inter', sans-serif; }"
             "QLabel { color: #202124; font-size: 14px; }"
-            "QWidget#LeftPane { background-color: #FFFFFF; border-radius: 12px; border: 1px solid #E0E0E0; }"
-            "QTextEdit, QLineEdit { background-color: #F1F3F4; color: #202124; padding: 10px; font-size: 13px; border-radius: 8px; border: 1px solid #DADCE0; }"
-            "QPushButton { background-color: #1A73E8; color: white; font-weight: bold; font-size: 14px; padding: 12px; border-radius: 6px; border: none; }"
-            "QPushButton:hover { background-color: #174EA6; }"
-            "QPushButton:disabled { background-color: #BDBDBD; }"
-            "QTabWidget::pane { border: 1px solid #E0E0E0; border-radius: 8px; background-color: #FFFFFF; top: -1px; }"
-            "QTabBar::tab { background: #F1F3F4; color: #5F6368; padding: 10px 20px; border-top-left-radius: 8px; border-top-right-radius: 8px; border: 1px solid transparent; }"
-            "QTabBar::tab:selected { background: #FFFFFF; color: #1A73E8; font-weight: bold; border: 1px solid #E0E0E0; border-bottom-color: #FFFFFF; }"
-            "QTabBar::tab:hover:!selected { background: #E8EAED; }"
+            "QWidget#LeftPane { background-color: rgba(255, 255, 255, 0.6); border-radius: 12px; border: 1px solid rgba(224, 224, 224, 0.5); }"
+            "QTextEdit, QLineEdit { background-color: rgba(241, 243, 244, 0.7); color: #202124; padding: 10px; font-size: 13px; border-radius: 8px; border: 1px solid rgba(218, 220, 224, 0.5); }"
+            "QPushButton { background-color: rgba(26, 115, 232, 0.9); color: white; font-weight: bold; font-size: 14px; padding: 12px; border-radius: 6px; border: none; }"
+            "QPushButton:hover { background-color: rgba(23, 78, 166, 1); }"
+            "QPushButton:disabled { background-color: rgba(189, 189, 189, 0.7); }"
+            "QTabWidget::pane { border: 1px solid rgba(224, 224, 224, 0.5); border-radius: 8px; background-color: rgba(255, 255, 255, 0.6); top: -1px; }"
+            "QTabBar::tab { background: rgba(241, 243, 244, 0.6); color: #5F6368; padding: 10px 20px; border-top-left-radius: 8px; border-top-right-radius: 8px; border: 1px solid transparent; }"
+            "QTabBar::tab:selected { background: rgba(255, 255, 255, 0.8); color: #1A73E8; font-weight: bold; border: 1px solid rgba(224, 224, 224, 0.5); border-bottom-color: transparent; }"
+            "QTabBar::tab:hover:!selected { background: rgba(232, 234, 237, 0.8); }"
             "QScrollArea { background-color: transparent; border: none; }"
             "QScrollArea > QWidget > QWidget { background-color: transparent; }"
             "QLabel#ResultsLabel { background-color: transparent; padding: 10px; font-size: 14px; }"

@@ -2,6 +2,7 @@
 #include <QScrollBar>
 #include <QTimer>
 
+ChatMentorWidget::ChatMentorWidget(QWidget *parent) : QWidget(parent) {
     // Main Chat Layout
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0); // Remove outer margins to fit pane
@@ -21,7 +22,8 @@
     chatScrollArea = new QScrollArea(this);
     chatScrollArea->setWidgetResizable(true);
     chatScrollArea->setFrameShape(QFrame::NoFrame);
-    chatScrollArea->setStyleSheet("QScrollArea { background-color: transparent; }");
+    chatScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    chatScrollArea->setStyleSheet("QScrollArea { background-color: transparent; border: none; } QScrollBar:vertical { width: 8px; background: transparent; } QScrollBar::handle:vertical { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }");
     
     chatContainer = new QWidget();
     chatContainer->setStyleSheet("background-color: transparent;");
@@ -38,7 +40,7 @@
     regenLayout->setAlignment(Qt::AlignCenter);
     QPushButton *regenButton = new QPushButton("🔄 Regenerate");
     regenButton->setCursor(Qt::PointingHandCursor);
-    regenButton->setStyleSheet("background-color: transparent; border: 1px solid #d1d5db; border-radius: 15px; padding: 5px 15px; color: #4b5563; font-size: 12px;");
+    regenButton->setStyleSheet("background-color: rgba(31, 41, 55, 0.5); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 15px; padding: 6px 16px; color: #d1d5db; font-size: 12px; margin-bottom: 10px;");
     regenLayout->addWidget(regenButton);
     mainLayout->addLayout(regenLayout);
 
@@ -52,12 +54,12 @@
     inputBox = new QLineEdit(this);
     inputBox->setPlaceholderText("Ask Justlegal...");
     inputBox->setMinimumHeight(45);
-    inputBox->setStyleSheet("QLineEdit { background-color: transparent; border: 1px solid #d1d5db; border-radius: 22px; padding: 0 20px; font-size: 14px; }");
+    inputBox->setStyleSheet("QLineEdit { background-color: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 22px; padding: 0 20px; font-size: 14px; color: white; } QLineEdit::placeholder { color: #9ca3af; }");
     
     sendButton = new QPushButton("➤", this);
     sendButton->setCursor(Qt::PointingHandCursor);
     sendButton->setFixedSize(36, 36);
-    sendButton->setStyleSheet("background-color: transparent; color: #000000; font-size: 18px; border: none;");
+    sendButton->setStyleSheet("background-color: transparent; color: #9ca3af; font-size: 18px; border: none;");
     
     textInputLayout->addWidget(inputBox, 1);
     textInputLayout->addWidget(sendButton);
@@ -87,6 +89,7 @@
     
     // Welcome message
     addMessage("Mentor", "Absolutely! Let me gather some details about your requirements.", true);
+}
 
 void ChatMentorWidget::onSendClicked() {
     QString text = inputBox->text().trimmed();
@@ -140,7 +143,7 @@ void ChatMentorWidget::addMessage(const QString &sender, const QString &message,
         QPushButton *copyBtn = new QPushButton("📋 Copy");
         QPushButton *shareBtn = new QPushButton("🔗 Share");
         
-        QString actionStyle = "background: transparent; border: none; color: #6b7280; font-size: 12px;";
+        QString actionStyle = "background: transparent; border: none; color: #9ca3af; font-size: 12px;";
         upBtn->setStyleSheet(actionStyle);
         downBtn->setStyleSheet(actionStyle);
         copyBtn->setStyleSheet(actionStyle);
@@ -159,11 +162,12 @@ void ChatMentorWidget::addMessage(const QString &sender, const QString &message,
         rowLayout->addWidget(avatarLabel, 0, Qt::AlignTop);
         rowLayout->addLayout(contentLayout, 1);
         rowLayout->addStretch(0);
+        msgLabel->setStyleSheet("font-size: 14px; line-height: 1.5; background-color: rgba(243, 232, 255, 0.6); padding: 12px 16px; border-radius: 12px; border-top-left-radius: 2px; border: 1px solid rgba(255, 255, 255, 0.3);");
     } else {
         rowLayout->addStretch(0);
         rowLayout->addLayout(contentLayout, 1);
         rowLayout->addWidget(avatarLabel, 0, Qt::AlignTop);
-        msgLabel->setStyleSheet("font-size: 14px; line-height: 1.5; background-color: #f3f4f6; padding: 12px 16px; border-radius: 12px; border-top-right-radius: 2px;");
+        msgLabel->setStyleSheet("font-size: 14px; line-height: 1.5; background-color: rgba(243, 244, 246, 0.6); padding: 12px 16px; border-radius: 12px; border-top-right-radius: 2px; border: 1px solid rgba(255, 255, 255, 0.3);");
     }
     
     chatLayout->addWidget(bubbleWidget);
